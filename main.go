@@ -62,7 +62,6 @@ func main() {
 	v1 := app.Group("/api/v1")
 	v1.Route("/file", file.Route)
 
-	localIP := "192.168.1.2"
 	serverAddr := "0.0.0.0:" + port
 
 	// Start Server
