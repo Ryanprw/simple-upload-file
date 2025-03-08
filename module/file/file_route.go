@@ -11,7 +11,6 @@ import (
 func Route(router fiber.Router) {
 	router.Post("/", func(c *fiber.Ctx) error {
 		form, err := c.MultipartForm()
-
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
 				Code:    fiber.StatusBadRequest,

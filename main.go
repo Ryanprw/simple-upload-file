@@ -17,13 +17,11 @@ func main() {
 	}
 
 	config := fiber.Config{
-		// 1GB
 		BodyLimit: 1024 * 1024 * 1024,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			if err == nil {
 				return nil
 			}
-
 			code := fiber.ErrInternalServerError.Code
 			message := fiber.ErrInternalServerError.Message
 
@@ -31,7 +29,6 @@ func main() {
 				code = value.Code
 				message = value.Message
 			}
-
 			return c.Status(code).JSON(utils.BaseResponse{
 				Message: message,
 				Error:   nil,
