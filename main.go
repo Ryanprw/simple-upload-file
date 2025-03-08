@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"os"
 
 	"github.com/Ryanprw/simple-upload-file/core/utils"
@@ -11,9 +13,23 @@ import (
 )
 
 func main() {
+
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error loading .env file")
+		log.Println("Warning: .env file not found, using default values")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	uploadDir := "./public/uploads"
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		err := os.MkdirAll(uploadDir, os.ModePerm)
+		if err != nil {
+			log.Fatalf("Error creating upload directory: %v", err)
+		}
 	}
 
 	config := fiber.Config{
@@ -37,13 +53,20 @@ func main() {
 	}
 
 	app := fiber.New(config)
+
 	app.Use(cors.New())
+
 	app.Static("/", "./public")
-	app.Static("/uploads", "./public/uploads")
+	app.Static("/uploads", uploadDir)
 
 	v1 := app.Group("/api/v1")
 	v1.Route("/file", file.Route)
 
-	port := ":" + os.Getenv("PORT")
-	app.Listen(port)
+	localIP := "192.168.1.2"
+	serverAddr := "0.0.0.0:" + port
+
+	// Start Server
+	fmt.Printf("Server running at: http://127.0.0.1:%s\n", port)
+	fmt.Printf("Accessible via local network: http://%s:%s\n", localIP, port)
+	log.Fatal(app.Listen(serverAddr))
 }

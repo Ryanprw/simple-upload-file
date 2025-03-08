@@ -1,79 +1,99 @@
 package file
 
 import (
-	"strconv"
-	"time"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/Ryanprw/simple-upload-file/core/utils"
 	"github.com/gofiber/fiber/v2"
 )
 
 func Route(router fiber.Router) {
-	router.Post("/", func(c *fiber.Ctx) error {
-		form, err := c.MultipartForm()
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
-				Code:    fiber.StatusBadRequest,
-				Message: "Failed to parse uploaded files",
-			})
-		}
+	router.Post("/", uploadFiles)
 
-		files := form.File["file"]
-		if len(files) == 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
-				Code:    fiber.StatusBadRequest,
-				Message: "There's no file provided",
-			})
-		}
+	router.Get("/", listUploadedFiles)
+}
 
-		file := files[0]
-		milis := strconv.FormatInt(time.Now().UnixMilli(), 10)
-		filePath := "./public/uploads/" + milis + "_" + file.Filename
-		fileUrl := "uploads/" + milis + "_" + file.Filename
-		err = c.SaveFile(file, filePath)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(utils.BaseResponse{
-				Code:    fiber.StatusBadRequest,
-				Message: "Failed to save uploaded file",
-			})
-		}
-
-		return c.Status(fiber.StatusCreated).JSON(utils.BaseResponse{
-			Code:    fiber.StatusCreated,
-			Message: "Saved",
-			Data:    fileUrl,
+func listUploadedFiles(c *fiber.Ctx) error {
+	uploadDir := "./public/uploads"
+	files, err := os.ReadDir(uploadDir)
+	if err != nil {
+		fmt.Println("Error reading upload directory:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.BaseResponse{
+			Code:    fiber.StatusInternalServerError,
+			Message: "Failed to read upload directory",
 		})
+	}
+
+	var fileUrls []string
+	for _, file := range files {
+		fileUrls = append(fileUrls, "uploads/"+file.Name())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.BaseResponse{
+		Code:    fiber.StatusOK,
+		Message: "Uploaded files",
+		Data:    fileUrls,
 	})
+}
 
-	router.Post("/bulk", func(c *fiber.Ctx) error {
-		form, err := c.MultipartForm()
+func uploadFiles(c *fiber.Ctx) error {
+	fmt.Println("Receiving file upload request...")
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		fmt.Println("Error parsing form:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
+			Code:    fiber.StatusBadRequest,
+			Message: "Failed to parse uploaded files",
+		})
+	}
+
+	files := form.File["file"]
+	if len(files) == 0 {
+		fmt.Println("No files received")
+		return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
+			Code:    fiber.StatusBadRequest,
+			Message: "No files uploaded",
+		})
+	}
+
+	uploadDir := "./public/uploads"
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		err := os.MkdirAll(uploadDir, os.ModePerm)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.BaseResponse{
-				Code:    fiber.StatusBadRequest,
-				Message: "Failed to parse uploaded files",
+			fmt.Println("Error creating upload directory:", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.BaseResponse{
+				Code:    fiber.StatusInternalServerError,
+				Message: "Failed to create upload directory",
+			})
+		}
+	}
+
+	var fileUrls []string
+	for _, file := range files {
+		filePath := filepath.Join(uploadDir, file.Filename)
+		fileUrl := "uploads/" + file.Filename
+
+		err := c.SaveFile(file, filePath)
+		if err != nil {
+			fmt.Println("Error saving file:", file.Filename, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.BaseResponse{
+				Code:    fiber.StatusInternalServerError,
+				Message: "Failed to save file",
 			})
 		}
 
-		var compressedFileURLs []string
-		files := form.File["file[]"]
-		for _, file := range files {
-			milis := strconv.FormatInt(time.Now().UnixMilli(), 10)
-			filePath := "./public/uploads/" + milis + "_" + file.Filename
-			fileUrl := "uploads/" + milis + "_" + file.Filename
-			err = c.SaveFile(file, filePath)
-			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(utils.BaseResponse{
-					Code:    fiber.StatusBadRequest,
-					Message: "Failed to save uploaded file",
-				})
-			}
-			compressedFileURLs = append(compressedFileURLs, fileUrl)
-		}
-		return c.Status(fiber.StatusCreated).JSON(utils.BaseResponse{
-			Code:    fiber.StatusCreated,
-			Message: "Saved",
-			Data:    compressedFileURLs,
-		})
+		fmt.Println("File saved:", file.Filename, "➡", fileUrl)
+		fileUrls = append(fileUrls, fileUrl)
+	}
 
+	fmt.Println("All files uploaded successfully!")
+
+	return c.Status(fiber.StatusCreated).JSON(utils.BaseResponse{
+		Code:    fiber.StatusCreated,
+		Message: "Files uploaded successfully",
+		Data:    fileUrls,
 	})
 }
