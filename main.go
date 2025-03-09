@@ -65,7 +65,7 @@ func main() {
 	serverAddr := "0.0.0.0:" + port
 
 	// Start Server
-	fmt.Printf("Server running at: http://127.0.0.1:%s\n", port)
+	fmt.Printf("Server running at: http://000.0.0.1:%s\n", port)
 	fmt.Printf("Accessible via local network: http://%s:%s\n", localIP, port)
 	log.Fatal(app.Listen(serverAddr))
 }
